@@ -26,7 +26,7 @@ import (
 // BuildWalker creates a filepath.WalkFunc that walks over the given root
 // (which should represent an ACI layout on disk) and adds the files in the
 // rootfs/ subdirectory to the given ArchiveWriter
-func BuildWalker(root string, aw ArchiveWriter) filepath.WalkFunc {
+func BuildWalker(root string, aw ArchiveWriter, cb func(hdr *tar.Header) bool) filepath.WalkFunc {
 	// cache of inode -> filepath, used to leverage hard links in the archive
 	inos := map[uint64]string{}
 	return func(path string, info os.FileInfo, err error) error {
@@ -86,6 +86,13 @@ func BuildWalker(root string, aw ArchiveWriter) filepath.WalkFunc {
 			hdr.Size = 0
 			r = nil
 		}
+
+		if cb != nil {
+			if !cb(hdr) {
+				return nil
+			}
+		}
+
 		if err := aw.AddFile(hdr, r); err != nil {
 			return err
 		}
